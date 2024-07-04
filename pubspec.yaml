@@ -1,0 +1,23 @@
+name: boomflame
+description: 
+  Boomflame combines the convenience of Boomsheets with the power of Flame engine!
+  Bring your animations to life using the boomflame AnimationComponent right away!
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.4 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  flame: ^1.17.0
+  boomsheets: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+flutter:
+  assets:
+    - assets/anims/player_blue_crouch.anim
+    - assets/images/player_blue_crouch.png
