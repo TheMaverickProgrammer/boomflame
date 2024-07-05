@@ -6,12 +6,13 @@ version: 1.0.0+1
 
 environment:
   sdk: '>=3.3.4 <4.0.0'
+
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.6
   flame: ^1.17.0
-  boomsheets: ^1.0.0
+  boomsheets: ^1.0.3
 
 dev_dependencies:
   flutter_test:

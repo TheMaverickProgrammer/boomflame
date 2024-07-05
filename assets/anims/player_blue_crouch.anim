@@ -1,7 +1,7 @@
 !frame_rate 60
 !image_path "X:/Big_Code/boomsheets/dartlang/boomsheets_flame/assets/images/player_blue_crouch.png"
 
-animation "STAND"
+animation "stand"
 frame duration=50f x=10 y=172 w=81 h=108 originx=28 originy=105
 
 animation "TO_CROUCH"

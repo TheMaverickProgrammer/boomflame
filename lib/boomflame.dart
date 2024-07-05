@@ -1,32 +1,73 @@
-import 'dart:io';
 import 'dart:math';
 import 'package:boomsheets/boomsheets.dart';
+import 'package:flame/cache.dart';
 import 'package:flame/components.dart';
+import 'package:flame/flame.dart';
+
+/// [Anim] state objects can be accessed by their name, case insensitive.
+enum CaseSensitivity { insensitive, sensitive }
 
 class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
-  Uri _uri;
   bool play;
-  final bool framebased;
-  bool _needsLoad = true;
   Document? doc;
   Anim? currAnim;
   Keyframe? cachedFrame;
   SpriteComponent? target;
   String? _defaultState;
-  Frametime frame = Frametime(0);
+  Frametime frame = const Frametime(0);
   Duration elapsedTime = Duration.zero;
+  Map<String, String>? _stateNameHash;
+  final AssetsCache? _cache;
+  final bool framebased;
+  final CaseSensitivity stateNameSensitivity;
 
-  AnimationComponent(Uri uri, {String? state, bool autoPlay = true})
+  AnimationComponent(String src,
+      {AssetsCache? cache,
+      String? state,
+      this.stateNameSensitivity = CaseSensitivity.insensitive,
+      autoPlay = true})
       : framebased = false,
         play = autoPlay,
-        _uri = uri,
-        _defaultState = state;
+        _cache = cache,
+        _defaultState = state {
+    _load(src);
+  }
 
-  AnimationComponent.framebased(Uri uri, {String? state, bool autoPlay = true})
+  AnimationComponent.framebased(String src,
+      {AssetsCache? cache,
+      String? state,
+      this.stateNameSensitivity = CaseSensitivity.insensitive,
+      bool autoPlay = true})
       : framebased = true,
         play = autoPlay,
-        _uri = uri,
-        _defaultState = state;
+        _cache = cache,
+        _defaultState = state {
+    _load(src);
+  }
+
+  void _load(String src) async {
+    final AssetsCache cache = _cache ?? Flame.assets;
+    doc = DocumentReader.fromString(await cache.readFile(src));
+
+    if (doc != null && isStateNameInsensitive) {
+      _stateNameHash =
+          doc!.states.map((key, val) => MapEntry(key.toLowerCase(), key));
+    }
+
+    if (_defaultState != null) {
+      setState(_defaultState!, refresh: true);
+    }
+
+    // Consume
+    _defaultState = null;
+  }
+
+  String _getStateName(String state) => isStateNameInsensitive
+      ? _stateNameHash![state.toLowerCase()] ?? ""
+      : state;
+
+  bool get isStateNameInsensitive =>
+      stateNameSensitivity == CaseSensitivity.insensitive;
 
   String get currentStateName {
     return currAnim?.name ?? "";
@@ -36,23 +77,13 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     return doc?.states.keys.toList() ?? const [];
   }
 
-  Uri get uri {
-    return _uri;
-  }
-
-  set uri(Uri newUri) {
-    if (_uri == newUri) return;
-    _uri = newUri;
-    _needsLoad = true;
-  }
-
   bool hasState(String state) {
-    return doc?.states.containsKey(state) ?? false;
+    return doc?.states.containsKey(_getStateName(state)) ?? false;
   }
 
   void setState(String state, {bool refresh = false}) {
-    currAnim = doc?.states[state];
-    frame = Frametime(0);
+    currAnim = doc?.states[_getStateName(state)];
+    frame = const Frametime(0);
     cachedFrame = null; // assume
 
     if (currAnim?.keyframes.isEmpty ?? false) return;
@@ -64,12 +95,6 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   }
 
   List<Attribute>? get attrs => currAnim?.attrs;
-
-  @override
-  void onLoad() async {
-    if (!_needsLoad) return;
-    await _readDoc();
-  }
 
   @override
   void update(double dt) {
@@ -101,13 +126,13 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
 
   void refresh(SpriteComponent sprComponent) {
     if (cachedFrame == null) return;
-    final Vector2 pos = cachedFrame!.rect.topLeft.toVector2();
-    final Vector2 size = cachedFrame!.rect.size();
+    final Vector2 pos = cachedFrame!.computeRect.topLeft.toVector2();
+    final Vector2 size = cachedFrame!.computeRect.size();
     final Vector2 origin = cachedFrame!.canonicalOrigin.toVector2();
     sprComponent.sprite?.srcPosition = pos;
     sprComponent.sprite?.srcSize = size;
     sprComponent.anchor = Anchor(origin.x, origin.y);
-    sprComponent.autoResize = true; // force a resize
+    sprComponent.autoResize = true; // force a resize event to update sprite
   }
 
   void syncTime(Duration time) {
@@ -139,26 +164,6 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     } while (progress > 0);
 
     cachedFrame = next;
-  }
-
-  Future<void> _readDoc() async {
-    _needsLoad = false;
-    doc = await DocumentReader.fromFile(
-      File.fromUri(
-        uri,
-      ),
-    );
-
-    if (_defaultState != null) {
-      setState(_defaultState!, refresh: true);
-
-      // Consume
-      _defaultState = null;
-    }
-  }
-
-  Future<void> loadNow() async {
-    await _readDoc();
   }
 }
 

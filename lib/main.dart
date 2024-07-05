@@ -15,19 +15,17 @@ void main() {
 }
 
 class MyWorld extends World with TapCallbacks {
-  late Sprite sprite;
   late SpriteComponent sprComponent;
 
   @override
   Future<void> onLoad() async {
-    sprite = await Sprite.load("player_blue_crouch.png");
-    await add(sprComponent = SpriteComponent(
-      sprite: sprite,
+    add(sprComponent = SpriteComponent(
+      sprite: await Sprite.load("player_blue_crouch.png"),
       scale: Vector2.all(1.0),
       children: [
         bf.AnimationComponent.framebased(
-          Uri.parse("assets/anims/player_blue_crouch.anim"),
-          state: "\"STAND\"",
+          "anims/player_blue_crouch.anim",
+          state: "stand",
           autoPlay: true,
         )
       ],
