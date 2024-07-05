@@ -20,5 +20,5 @@ dev_dependencies:
   flutter_lints: ^3.0.0
 flutter:
   assets:
-    - assets/anims/player_blue_crouch.anim
-    - assets/images/player_blue_crouch.png
+    - assets/anims/player_compressed.anim
+    - assets/images/player_compressed.png

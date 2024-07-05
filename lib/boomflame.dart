@@ -4,6 +4,8 @@ import 'package:flame/cache.dart';
 import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
 
+export 'package:boomsheets/boomsheets.dart';
+
 /// [Anim] state objects can be accessed by their name, case insensitive.
 enum CaseSensitivity { insensitive, sensitive }
 
@@ -12,7 +14,6 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   Document? doc;
   Anim? currAnim;
   Keyframe? cachedFrame;
-  SpriteComponent? target;
   String? _defaultState;
   Frametime frame = const Frametime(0);
   Duration elapsedTime = Duration.zero;
@@ -105,6 +106,8 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     } else {
       elapse(dt);
     }
+
+    super.update(dt);
   }
 
   void tick() {
@@ -132,6 +135,15 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     sprComponent.sprite?.srcPosition = pos;
     sprComponent.sprite?.srcSize = size;
     sprComponent.anchor = Anchor(origin.x, origin.y);
+
+    if (sprComponent.isFlippedHorizontally != cachedFrame!.flipX) {
+      sprComponent.flipHorizontally();
+    }
+
+    if (sprComponent.isFlippedVertically != cachedFrame!.flipY) {
+      sprComponent.flipVertically();
+    }
+
     sprComponent.autoResize = true; // force a resize event to update sprite
   }
 
