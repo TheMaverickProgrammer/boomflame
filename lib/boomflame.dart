@@ -18,6 +18,8 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   Frametime frame = const Frametime(0);
   Duration elapsedTime = Duration.zero;
   Map<String, String>? _stateNameHash;
+  AnimationComponent? _syncAnim;
+  final Map<AnimationComponent, String> _syncChildren = {};
   final AssetsCache? _cache;
   final bool framebased;
   final CaseSensitivity stateNameSensitivity;
@@ -63,6 +65,14 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     _defaultState = null;
   }
 
+  // Flame engine component parents do not use their anchor when drawing children,
+  // so the offset of the child attachment to point T is just T.
+  // Flame engine coordinate system uses left, bottom as negative number space.
+  void _reanchor(Keyframe frame, String label) {
+    parent.position = frame.points[label]?.pos.toVector2() ?? Vector2.zero();
+    parent.position.y = -parent.position.y;
+  }
+
   String _getStateName(String state) => isStateNameInsensitive
       ? _stateNameHash![state.toLowerCase()] ?? ""
       : state;
@@ -76,6 +86,20 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
 
   List<String> get stateNames {
     return doc?.states.keys.toList() ?? const [];
+  }
+
+  void syncPoint(String label, AnimationComponent anim) {
+    if (anim == this) throw "Cannot synchronize animation with itself";
+
+    if (anim._syncAnim != null) {
+      anim._syncAnim!.removeSyncPoint(anim);
+    }
+    anim._syncAnim = this;
+    _syncChildren[anim] = label;
+  }
+
+  void removeSyncPoint(AnimationComponent anim) {
+    _syncChildren.remove(anim);
   }
 
   bool hasState(String state) {
@@ -144,7 +168,12 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
       sprComponent.flipVertically();
     }
 
-    sprComponent.autoResize = true; // force a resize event to update sprite
+    // force a resize event to update sprite
+    sprComponent.autoResize = true;
+
+    if (_syncAnim?.cachedFrame == null) return;
+
+    _reanchor(_syncAnim!.cachedFrame!, _syncAnim!._syncChildren[this]!);
   }
 
   void syncTime(Duration time) {
