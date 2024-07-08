@@ -3,21 +3,61 @@ import 'package:boomsheets/boomsheets.dart';
 import 'package:flame/cache.dart';
 import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
-
 export 'package:boomsheets/boomsheets.dart';
 
 /// [Anim] state objects can be accessed by their name, case insensitive.
 enum CaseSensitivity { insensitive, sensitive }
 
+/// Play [Mode] types can be combined. Default is [Mode.forward].
+enum Mode {
+  stop(0x00),
+  forward(0x01),
+  reverse(0x02),
+  repeat(0x03),
+  loop(0x04);
+
+  final int byte;
+  const Mode(this.byte);
+}
+
+/// [IndexedKeyframe] associates a [Keyframe] with its element [index].
+class IndexedKeyframe {
+  /// The element [index] of the [data] keyframe in an [Anim].
+  int index;
+
+  /// The data of the [Keyframe] we are interested in.
+  Keyframe data;
+
+  /// If `true`, indicates [data] was stored after a call to update.
+  bool _newThisFrame = false;
+
+  // private
+  IndexedKeyframe._(this.data, this.index, this._newThisFrame);
+
+  bool get newThisFrame => _newThisFrame;
+
+  /// If [data] field is null, the return is `null`.
+  /// [index] must be a positive base-1 integer.
+  static IndexedKeyframe? from(
+      {required Keyframe? data,
+      required int index,
+      required bool newThisFrame}) {
+    if (data == null) return null;
+    assert(index > 0, "Keyframe index expected a positive, base-1 integer.");
+
+    return IndexedKeyframe._(data, index, newThisFrame);
+  }
+}
+
 class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
-  bool play;
   Document? doc;
   Anim? currAnim;
-  Keyframe? cachedFrame;
+  IndexedKeyframe? currKeyframe;
   String? _defaultState;
   Frametime frame = const Frametime(0);
   Duration elapsedTime = Duration.zero;
   Map<String, String>? _stateNameHash;
+  Mode mode;
   AnimationComponent? _syncAnim;
   final Map<AnimationComponent, String> _syncChildren = {};
   final AssetsCache? _cache;
@@ -28,9 +68,8 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
       {AssetsCache? cache,
       String? state,
       this.stateNameSensitivity = CaseSensitivity.insensitive,
-      autoPlay = true})
+      this.mode = Mode.forward})
       : framebased = false,
-        play = autoPlay,
         _cache = cache,
         _defaultState = state {
     _load(src);
@@ -40,9 +79,8 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
       {AssetsCache? cache,
       String? state,
       this.stateNameSensitivity = CaseSensitivity.insensitive,
-      bool autoPlay = true})
+      this.mode = Mode.forward})
       : framebased = true,
-        play = autoPlay,
         _cache = cache,
         _defaultState = state {
     _load(src);
@@ -58,7 +96,7 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     }
 
     if (_defaultState != null) {
-      setState(_defaultState!, refresh: true);
+      setState(_defaultState!, mode: mode, refresh: true);
     }
 
     // Consume
@@ -106,13 +144,22 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     return doc?.states.containsKey(_getStateName(state)) ?? false;
   }
 
-  void setState(String state, {bool refresh = false}) {
+  void setState(String state, {int? frame, Mode? mode, bool refresh = false}) {
+    this.mode = mode ?? Mode.forward;
     currAnim = doc?.states[_getStateName(state)];
-    frame = const Frametime(0);
-    cachedFrame = null; // assume
+    this.frame = const Frametime(0);
+    currKeyframe = null; // assume
 
     if (currAnim?.keyframes.isEmpty ?? false) return;
-    cachedFrame = currAnim?.keyframes.first;
+
+    currKeyframe = switch (frame) {
+      null => IndexedKeyframe.from(
+          data: currAnim?.keyframes.first, index: 1, newThisFrame: true),
+      int f => IndexedKeyframe.from(
+          data: currAnim?.keyframes.elementAtOrNull(f - 1),
+          index: f,
+          newThisFrame: true),
+    };
 
     if (refresh == true) {
       this.refresh(parent);
@@ -123,7 +170,10 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
 
   @override
   void update(double dt) {
-    if (dt == 0.0 || play == false) return;
+    if (dt == 0.0 || mode == Mode.stop) return;
+
+    // If we cached this keyframe, it is old
+    currKeyframe?._newThisFrame = false;
 
     if (framebased) {
       tick();
@@ -152,28 +202,28 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   }
 
   void refresh(SpriteComponent sprComponent) {
-    if (cachedFrame == null) return;
-    final Vector2 pos = cachedFrame!.computeRect.topLeft.toVector2();
-    final Vector2 size = cachedFrame!.computeRect.size();
-    final Vector2 origin = cachedFrame!.canonicalOrigin.toVector2();
+    if (currKeyframe == null) return;
+    final Vector2 pos = currKeyframe!.data.computeRect.topLeft.toVector2();
+    final Vector2 size = currKeyframe!.data.computeRect.size();
+    final Vector2 origin = currKeyframe!.data.canonicalOrigin.toVector2();
     sprComponent.sprite?.srcPosition = pos;
     sprComponent.sprite?.srcSize = size;
     sprComponent.anchor = Anchor(origin.x, origin.y);
 
-    if (sprComponent.isFlippedHorizontally != cachedFrame!.flipX) {
+    if (sprComponent.isFlippedHorizontally != currKeyframe!.data.flipX) {
       sprComponent.flipHorizontally();
     }
 
-    if (sprComponent.isFlippedVertically != cachedFrame!.flipY) {
+    if (sprComponent.isFlippedVertically != currKeyframe!.data.flipY) {
       sprComponent.flipVertically();
     }
 
     // force a resize event to update sprite
     sprComponent.autoResize = true;
 
-    if (_syncAnim?.cachedFrame == null) return;
+    if (_syncAnim?.currKeyframe == null) return;
 
-    _reanchor(_syncAnim!.cachedFrame!, _syncAnim!._syncChildren[this]!);
+    _reanchor(_syncAnim!.currKeyframe!.data, _syncAnim!._syncChildren[this]!);
   }
 
   void syncTime(Duration time) {
@@ -190,7 +240,11 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     if (currAnim == null) return;
 
     if (frame >= currAnim!.totalDuration) {
-      syncFrametime(Frametime.zero);
+      if ((mode.byte & Mode.loop.byte) == Mode.loop.byte) {
+        syncFrametime(Frametime.zero);
+      } else {
+        frame = currAnim!.totalDuration;
+      }
     }
 
     final List<Keyframe> kfs = currAnim!.keyframes;
@@ -204,7 +258,8 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
       idx++;
     } while (progress > 0);
 
-    cachedFrame = next;
+    currKeyframe = IndexedKeyframe.from(
+        data: next, index: idx, newThisFrame: currKeyframe?.index != idx);
   }
 }
 

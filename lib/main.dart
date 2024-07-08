@@ -1,9 +1,11 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flame_tiled/flame_tiled.dart';
 import 'package:boomflame/boomflame.dart' as bf;
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 /// This example simply adds sprite with a flameboom.AnimationComponent.
 /// Clicking on the sprite changes the animation state to the next animations state.
@@ -28,6 +30,7 @@ enum PlayerMovementState {
   turn,
   run,
   jump,
+  fall,
 }
 
 enum PlayerPoseState {
@@ -43,6 +46,7 @@ enum Facing {
 
   final int i;
   const Facing(this.i);
+  Facing get flip => this == left ? right : left;
 }
 
 extension type const Collision(int byte) {
@@ -92,6 +96,8 @@ class Player extends PositionComponent with HasWorldReference {
   static const bf.Frametime jumpRateMax = bf.Frametime(60);
   static const bf.Frametime fallRateMax = bf.Frametime(2);
   bf.Frametime jumpFrames = bf.Frametime.zero;
+  bf.Frametime aimFrames = bf.Frametime.zero;
+
   //Collision collision = Collision.none;
   Vector2 momentum = Vector2.zero();
 
@@ -125,24 +131,41 @@ class Player extends PositionComponent with HasWorldReference {
 
   @override
   void update(double dt) {
-    _collisionStep();
     _momentum();
+    _collisionStep();
 
     final legsAnim = (legs.firstChild() as bf.AnimationComponent);
 
-    final String nextState = switch ((movementState, poseState)) {
-      (PlayerMovementState.jump, _) => "legs_jump",
-      (PlayerMovementState.idle, PlayerPoseState.crouch) => "legs_crouch",
-      (PlayerMovementState.idle, PlayerPoseState.stand) => "legs_stand",
-      (PlayerMovementState.idle, _) => "legs_crouching",
-      (PlayerMovementState.run, PlayerPoseState.stand) => "legs_run",
-      (PlayerMovementState.turn, PlayerPoseState.crouch) => "legs_turn_crouch",
-      (PlayerMovementState.turn, PlayerPoseState.stand) => "legs_turn_stand",
-      _ => "legs_stand"
-    };
+    if (momentum.y > 0) {
+      movementState = PlayerMovementState.fall;
+      legsAnim.setState("legs_jump", frame: 5, refresh: true);
+    } else {
+      final String nextState = switch ((movementState, poseState)) {
+        (PlayerMovementState.jump, _) => "legs_jump",
+        (PlayerMovementState.idle, PlayerPoseState.crouch) => "legs_crouch",
+        (PlayerMovementState.idle, PlayerPoseState.stand) => "legs_stand",
+        (PlayerMovementState.idle, _) => "legs_crouching",
+        (PlayerMovementState.run, PlayerPoseState.stand) => "legs_run",
+        (PlayerMovementState.turn, PlayerPoseState.crouch) =>
+          "legs_turn_crouch",
+        (PlayerMovementState.turn, PlayerPoseState.stand) => "legs_turn_stand",
+        _ => "legs_stand"
+      };
 
-    if (legsAnim.currentStateName != nextState) {
-      legsAnim.setState(nextState, refresh: true);
+      if (legsAnim.currentStateName != nextState) {
+        legsAnim.setState(nextState, refresh: true);
+      } else if (legsAnim.currentStateName == "legs_run") {
+        legsAnim.mode = bf.Mode.loop;
+        final keyframeIndex = legsAnim.currKeyframe!.index;
+        final newThisFrame = legsAnim.currKeyframe!.newThisFrame;
+
+        if (newThisFrame) {
+          switch (keyframeIndex) {
+            case 4 || 8:
+              FlameAudio.play("step.wav");
+          }
+        }
+      }
     }
 
     // flip by facing direction
@@ -156,15 +179,27 @@ class Player extends PositionComponent with HasWorldReference {
     }
 
     // Reset movement state flags for next frame
-    if (jumpFrames.count <= 0) {
+
+    if (jumpFrames.count > 0) {
+      legsAnim.mode = bf.Mode.forward;
+      jumpFrames = jumpFrames.dec();
+    } else if (movementState != PlayerMovementState.fall) {
       movementState = PlayerMovementState.idle;
-    } else {
-      jumpFrames = jumpFrames - const bf.Frametime(1);
+    }
+
+    aimFrames = aimFrames.dec();
+    if (aimFrames.count <= 0) {
+      animTorso.setState("torso", refresh: true);
+      torso.angle = 0;
     }
   }
 
   void run() {
-    if (poseState != PlayerPoseState.stand || jumpFrames.count > 0) return;
+    // Cannot move if in crouch pose
+    if (poseState != PlayerPoseState.stand) return;
+
+    // Move if making contact with floor only
+    if (movementState != PlayerMovementState.idle) return;
 
     final double next = momentum.x + facing.i * 3;
 
@@ -229,6 +264,13 @@ class Player extends PositionComponent with HasWorldReference {
         y: (position.y + momentum.y) ~/ tileH);
 
     if (gid?.tile != 0) {
+      // Represents contact with the floor
+      debugPrint("movementState: $movementState, momentum.y: ${momentum.y}");
+      if (momentum.y > 0 && movementState == PlayerMovementState.fall) {
+        movementState = PlayerMovementState.idle;
+        jumpFrames = bf.Frametime.zero;
+        FlameAudio.play("land.wav");
+      }
       momentum.y = 0;
     }
 
@@ -383,18 +425,54 @@ class Player extends PositionComponent with HasWorldReference {
   }
 
   void _momentum() {
-    //if (collision.isFalling) {
+    // our artificial gravity
     momentum.y += 0.5;
-    //}
 
+    // limit our physics
     momentum.clamp(
       Vector2.all(-30.0),
       Vector2.all(30.0),
     );
 
-    if (jumpFrames.count <= 0) {
-      momentum.x *= 0.93;
+    if (movementState == PlayerMovementState.idle) {
+      momentum.x *= 0.7;
     }
+  }
+
+  void aim(Vector2 dest) {
+    final localDest = world.findGame()?.camera.globalToLocal(dest);
+    if (localDest == null) return;
+
+    double degrees = (((math.pi +
+                    math.atan2(
+                        position.y - localDest.y, position.x - localDest.x)) *
+                (180.0 / math.pi)) +
+            90) %
+        360.0;
+
+    debugPrint("pos: $position, dest: $localDest, degrees: $degrees");
+    int frame = (degrees ~/ 36) + 1;
+
+    if (frame > 5) {
+      frame = 5 + (6 - frame);
+      facing = Facing.left;
+      degrees = 360 - degrees;
+    } else {
+      facing = Facing.right;
+    }
+
+    animTorso.setState("torso_aim",
+        frame: frame, mode: bf.Mode.stop, refresh: true);
+
+    // NOTE: Frame 5 (pointing straight down) looks bad for some reason,
+    // as if the rotation is going too dar. Skip this frame.
+    if (frame != 5) {
+      torso.angle = (degrees - (frame - 1) * 36) * (math.pi / 180);
+    } else {
+      torso.angle = 0;
+    }
+
+    aimFrames = const bf.Frametime(40);
   }
 }
 
@@ -404,9 +482,13 @@ class MyWorld extends World
   late TiledComponent mapComponent;
   CameraComponent? camera;
   bool move = false;
+  Vector2? dragStart;
 
   @override
   Future<void> onLoad() async {
+    FlameAudio.bgm.initialize();
+    FlameAudio.bgm.play("ambient.mp3");
+
     mapComponent = await TiledComponent.load(
         "level_0.tmx", prefix: "assets/maps/", Vector2.all(24));
     add(mapComponent);
@@ -433,6 +515,16 @@ class MyWorld extends World
       if (object.name == "Player Spawn") {
         player.position = object.position;
       }
+
+      if (object.name == "spark") {
+        add(SpriteComponent(
+          sprite: await Sprite.load("fx.png"),
+          children: [
+            bf.AnimationComponent.framebased("anims/fx.anim",
+                state: "spark", mode: bf.Mode.loop),
+          ],
+        )..position = object.position);
+      }
     }
   }
 
@@ -451,6 +543,8 @@ class MyWorld extends World
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
     if (event.handled) return;
+
+    player.aim(event.devicePosition);
   }
 
   @override
@@ -472,30 +566,35 @@ class MyWorld extends World
     super.onDragStart(event);
     if (event.handled) return;
 
+    dragStart = event.devicePosition;
     move = false;
   }
 
   @override
   void onDragUpdate(DragUpdateEvent event) {
     super.onDragUpdate(event);
-    if (event.handled) return;
+    if (event.handled || dragStart == null) return;
 
-    if (event.deviceDelta.length < 5) return;
+    Vector2 delta = dragStart! - event.deviceStartPosition;
+    debugPrint(delta.toString());
 
-    if (event.deviceDelta.x < 0) {
+    move = false;
+    if (delta.length < 100) return;
+
+    if (delta.x > 0) {
       player.facing = Facing.left;
     } else {
       player.facing = Facing.right;
     }
 
-    if (event.deviceDelta.y > 6) {
+    if (delta.y < -100) {
       player.crouch();
       return;
+    } else if (delta.y > 100) {
+      player.stand();
     }
 
-    debugPrint(event.deviceDelta.y.toString());
-
-    if (event.deviceDelta.x.abs() < 10) return;
+    if (delta.x.abs() < 150) return;
 
     move = true;
   }
@@ -505,6 +604,7 @@ class MyWorld extends World
     super.onDragEnd(event);
     if (event.handled) return;
 
+    dragStart = null;
     move = false;
   }
 }

@@ -1,0 +1,22 @@
+!frame_rate 60
+!image_path "X:/Big_Code/boomsheets/dartlang/boomsheets_flame/assets/images/fx.png"
+
+animation "fire"
+frame duration=5f x=39 y=39 w=17 h=15 originx=8 originy=7
+frame duration=5f x=130 y=35 w=25 h=24 originx=14 originy=13
+frame duration=5f x=211 y=21 w=55 h=51 originx=29 originy=27
+frame duration=5f x=306 y=20 w=62 h=56 originx=30 originy=27
+frame duration=5f x=396 y=13 w=74 h=68 originx=37 originy=35
+frame duration=5f x=511 y=31 w=35 h=34 originx=17 originy=19
+frame duration=5f x=603 y=26 w=44 h=42 originx=21 originy=22
+frame duration=5f x=693 y=21 w=54 h=51 originx=27 originy=25
+
+animation "spark"
+frame duration=5f x=798 y=43 w=12 h=11 originx=5 originy=4
+frame duration=5f x=859 y=30 w=28 h=30 originx=9 originy=17
+frame duration=5f x=923 y=34 w=33 h=27 originx=9 originy=12
+frame duration=5f x=987 y=34 w=36 h=31 originx=8 originy=12
+frame duration=5f x=1055 y=36 w=34 h=27 originx=4 originy=10
+frame duration=5f x=1121 y=36 w=33 h=25 originx=2 originy=10
+frame duration=5f x=1184 y=39 w=34 h=19 originx=1 originy=9
+frame duration=5f x=1253 y=46 w=30 h=15 originx=-3 originy=-3
