@@ -31,25 +31,35 @@ class IndexedKeyframe {
   /// If `true`, indicates [data] was stored after a call to update.
   bool _newThisFrame = false;
 
+  /// If `true`, indicates [data] has completed after a call to update.
+  bool _endedThisFrame = false;
+
+  /// If `true`, indicates [data] is the last frame in the sequence.
+  final bool isLast;
+
   // private
-  IndexedKeyframe._(this.data, this.index, this._newThisFrame);
+  IndexedKeyframe._(this.data, this.index, this.isLast, this._newThisFrame);
 
   bool get newThisFrame => _newThisFrame;
+  bool get endedThisFrame => _endedThisFrame;
 
   /// If [data] field is null, the return is `null`.
   /// [index] must be a positive base-1 integer.
-  static IndexedKeyframe? from(
-      {required Keyframe? data,
-      required int index,
-      required bool newThisFrame}) {
+  static IndexedKeyframe? from({
+    required Keyframe? data,
+    required int index,
+    required bool isLast,
+    required bool newThisFrame,
+  }) {
     if (data == null) return null;
     assert(index > 0, "Keyframe index expected a positive, base-1 integer.");
 
-    return IndexedKeyframe._(data, index, newThisFrame);
+    return IndexedKeyframe._(data, index, isLast, newThisFrame);
   }
 }
 
 class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
+  static String prefix = "anims/";
   Document? doc;
   Anim? currAnim;
   IndexedKeyframe? currKeyframe;
@@ -65,26 +75,31 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   final CaseSensitivity stateNameSensitivity;
 
   AnimationComponent(String src,
-      {AssetsCache? cache,
-      String? state,
+      {String? state,
+      String? prefix,
+      AssetsCache? cache,
       this.stateNameSensitivity = CaseSensitivity.insensitive,
       this.mode = Mode.forward})
       : framebased = false,
         _cache = cache,
         _defaultState = state {
-    _load(src);
+    _load(_srcPath(prefix, src));
   }
 
   AnimationComponent.framebased(String src,
       {AssetsCache? cache,
+      String? prefix,
       String? state,
       this.stateNameSensitivity = CaseSensitivity.insensitive,
       this.mode = Mode.forward})
       : framebased = true,
         _cache = cache,
         _defaultState = state {
-    _load(src);
+    _load(_srcPath(prefix, src));
   }
+
+  String _srcPath(String? prefix, String src) =>
+      "${prefix ?? AnimationComponent.prefix}$src";
 
   void _load(String src) async {
     final AssetsCache cache = _cache ?? Flame.assets;
@@ -150,19 +165,23 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     this.frame = const Frametime(0);
     currKeyframe = null; // assume
 
-    if (currAnim?.keyframes.isEmpty ?? false) return;
+    if (currAnim?.keyframes.isEmpty ?? true) return;
 
     currKeyframe = switch (frame) {
       null => IndexedKeyframe.from(
-          data: currAnim?.keyframes.first, index: 1, newThisFrame: true),
+          data: currAnim!.keyframes.first,
+          index: 1,
+          isLast: currAnim!.keyframes.length == 1,
+          newThisFrame: true),
       int f => IndexedKeyframe.from(
-          data: currAnim?.keyframes.elementAtOrNull(f - 1),
+          data: currAnim!.keyframes.elementAtOrNull(f - 1),
           index: f,
+          isLast: currAnim!.keyframes.length == f,
           newThisFrame: true),
     };
 
     if (refresh == true) {
-      this.refresh(parent);
+      this.refresh();
     }
   }
 
@@ -170,10 +189,17 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
 
   @override
   void update(double dt) {
-    if (dt == 0.0 || mode == Mode.stop) return;
+    if (dt == 0.0) return;
 
     // If we cached this keyframe, it is old
     currKeyframe?._newThisFrame = false;
+
+    // Refresh only, do not advance frame
+    if (mode == Mode.stop) {
+      refresh();
+      super.update(dt);
+      return;
+    }
 
     if (framebased) {
       tick();
@@ -187,7 +213,7 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   void tick() {
     frame = frame.inc();
     _calcFrame();
-    refresh(parent);
+    refresh();
     syncFrametime(frame);
   }
 
@@ -197,29 +223,30 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
       milliseconds: (dt.remainder(1.0) * 1000).toInt(),
     );
     _calcFrame();
-    refresh(parent);
+    refresh();
     syncTime(elapsedTime);
   }
 
-  void refresh(SpriteComponent sprComponent) {
+  void refresh({SpriteComponent? target}) {
     if (currKeyframe == null) return;
     final Vector2 pos = currKeyframe!.data.computeRect.topLeft.toVector2();
     final Vector2 size = currKeyframe!.data.computeRect.size();
     final Vector2 origin = currKeyframe!.data.canonicalOrigin.toVector2();
-    sprComponent.sprite?.srcPosition = pos;
-    sprComponent.sprite?.srcSize = size;
-    sprComponent.anchor = Anchor(origin.x, origin.y);
+    target ??= parent;
+    target.sprite?.srcPosition = pos;
+    target.sprite?.srcSize = size;
+    target.anchor = Anchor(origin.x, origin.y);
 
-    if (sprComponent.isFlippedHorizontally != currKeyframe!.data.flipX) {
-      sprComponent.flipHorizontally();
+    if (target.isFlippedHorizontally != currKeyframe!.data.flipX) {
+      target.flipHorizontally();
     }
 
-    if (sprComponent.isFlippedVertically != currKeyframe!.data.flipY) {
-      sprComponent.flipVertically();
+    if (target.isFlippedVertically != currKeyframe!.data.flipY) {
+      target.flipVertically();
     }
 
     // force a resize event to update sprite
-    sprComponent.autoResize = true;
+    target.autoResize = true;
 
     if (_syncAnim?.currKeyframe == null) return;
 
@@ -259,7 +286,11 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     } while (progress > 0);
 
     currKeyframe = IndexedKeyframe.from(
-        data: next, index: idx, newThisFrame: currKeyframe?.index != idx);
+        data: next,
+        index: idx,
+        isLast: currAnim!.keyframes.length == idx,
+        newThisFrame: currKeyframe?.index != idx)
+      ?.._endedThisFrame = progress == 0;
   }
 }
 

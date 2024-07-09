@@ -11,8 +11,8 @@ import 'dart:math' as math;
 /// Clicking on the sprite changes the animation state to the next animations state.
 void main() {
   final CameraComponent camera = CameraComponent.withFixedResolution(
-    width: 24 * 8 * 5,
-    height: 24 * 4 * 4,
+    width: 24 * 30,
+    height: 24 * 18,
   );
 
   runApp(
@@ -93,6 +93,7 @@ class Player extends PositionComponent with HasWorldReference {
   PlayerMovementState movementState = PlayerMovementState.idle;
   PlayerPoseState poseState = PlayerPoseState.stand;
   Facing facing = Facing.right;
+  Facing presentFacing = Facing.right;
   static const bf.Frametime jumpRateMax = bf.Frametime(60);
   static const bf.Frametime fallRateMax = bf.Frametime(2);
   bf.Frametime jumpFrames = bf.Frametime.zero;
@@ -103,6 +104,7 @@ class Player extends PositionComponent with HasWorldReference {
 
   bool get isPoseStand => poseState == PlayerPoseState.stand;
   bool get isPoseCrouch => poseState == PlayerPoseState.crouch;
+  bool get isRunning => movementState == PlayerMovementState.run;
 
   @override
   Future<void> onLoad() async {
@@ -110,7 +112,7 @@ class Player extends PositionComponent with HasWorldReference {
       sprite: await Sprite.load("player_compressed.png"),
       children: [
         animLegs = bf.AnimationComponent.framebased(
-          "anims/player_compressed.anim",
+          "player_compressed.anim",
           state: "legs_stand",
         )
       ],
@@ -120,7 +122,7 @@ class Player extends PositionComponent with HasWorldReference {
       sprite: await Sprite.load("player_compressed.png"),
       children: [
         animTorso = bf.AnimationComponent.framebased(
-          "anims/player_compressed.anim",
+          "player_compressed.anim",
           state: "torso",
         )
       ],
@@ -136,7 +138,18 @@ class Player extends PositionComponent with HasWorldReference {
 
     final legsAnim = (legs.firstChild() as bf.AnimationComponent);
 
+    final bool turning = facing != presentFacing;
+    if (turning) {
+      switch (movementState) {
+        case PlayerMovementState.idle:
+          movementState = PlayerMovementState.turn;
+        case _:
+          presentFacing = facing;
+      }
+    }
+
     if (momentum.y > 0) {
+      if (movementState != PlayerMovementState.fall) {}
       movementState = PlayerMovementState.fall;
       legsAnim.setState("legs_jump", frame: 5, refresh: true);
     } else {
@@ -147,14 +160,23 @@ class Player extends PositionComponent with HasWorldReference {
         (PlayerMovementState.idle, _) => "legs_crouching",
         (PlayerMovementState.run, PlayerPoseState.stand) => "legs_run",
         (PlayerMovementState.turn, PlayerPoseState.crouch) =>
-          "legs_turn_crouch",
-        (PlayerMovementState.turn, PlayerPoseState.stand) => "legs_turn_stand",
+          "legs_crouch_turn",
+        (PlayerMovementState.turn, PlayerPoseState.stand) => "legs_stand_turn",
         _ => "legs_stand"
       };
 
+      final bool running = legsAnim.currentStateName == "legs_run";
       if (legsAnim.currentStateName != nextState) {
+        if (running) {
+          // Avoid frame-perfect double step sounds if previously playing
+          final keyframeIndex = legsAnim.currKeyframe!.index;
+          switch (keyframeIndex) {
+            case < 4:
+              FlameAudio.play("step.wav");
+          }
+        }
         legsAnim.setState(nextState, refresh: true);
-      } else if (legsAnim.currentStateName == "legs_run") {
+      } else if (running) {
         legsAnim.mode = bf.Mode.loop;
         final keyframeIndex = legsAnim.currKeyframe!.index;
         final newThisFrame = legsAnim.currKeyframe!.newThisFrame;
@@ -165,43 +187,67 @@ class Player extends PositionComponent with HasWorldReference {
               FlameAudio.play("step.wav");
           }
         }
+      } else if (turning) {
+        final keyframe = legsAnim.currKeyframe!;
+        if (keyframe.isLast && keyframe.endedThisFrame) {
+          presentFacing = facing;
+        }
+        animTorso.setState("torso_turn", frame: keyframe.index);
+        animTorso.mode = bf.Mode.stop;
+        torso.angle = 0;
+        momentum.x *= 0.5;
       }
     }
 
     // flip by facing direction
-    final bool flip = switch (facing) {
-      Facing.left => !isFlippedHorizontally,
-      Facing.right => isFlippedHorizontally
-    };
+    if (!turning) {
+      final bool flip = switch (presentFacing) {
+        Facing.left => !isFlippedHorizontally,
+        Facing.right => isFlippedHorizontally
+      };
 
-    if (flip) {
-      flipHorizontally();
+      if (flip) {
+        flipHorizontally();
+      }
     }
 
     // Reset movement state flags for next frame
-
     if (jumpFrames.count > 0) {
       legsAnim.mode = bf.Mode.forward;
       jumpFrames = jumpFrames.dec();
+      final keyframe = legsAnim.currKeyframe!;
+      if (keyframe.index == 2 && keyframe.newThisFrame) {
+        FlameAudio.play("jump_air.wav");
+      }
     } else if (movementState != PlayerMovementState.fall) {
       movementState = PlayerMovementState.idle;
     }
 
     aimFrames = aimFrames.dec();
     if (aimFrames.count <= 0) {
-      animTorso.setState("torso", refresh: true);
+      // Stop pointing at the aim destination after a while
+      animTorso.setState("torso");
       torso.angle = 0;
     }
+
+    animLegs.refresh();
+    animTorso.refresh();
   }
 
   void run() {
     // Cannot move if in crouch pose
     if (poseState != PlayerPoseState.stand) return;
 
-    // Move if making contact with floor only
-    if (movementState != PlayerMovementState.idle) return;
+    // Must not be turning, falling, or jumping
+    switch (movementState) {
+      case PlayerMovementState.turn ||
+            PlayerMovementState.fall ||
+            PlayerMovementState.jump:
+        return;
+      case _:
+    }
 
-    final double next = momentum.x + facing.i * 3;
+    final double next = momentum.x + presentFacing.i * 3;
 
     if (next.abs() < 9) {
       momentum.x = next;
@@ -219,9 +265,11 @@ class Player extends PositionComponent with HasWorldReference {
     if (jumpFrames.count <= 0) {
       jumpFrames = jumpRateMax;
       momentum.y -= 12.0;
-      momentum.x += facing.i * 3;
-
+      momentum.x += presentFacing.i * 3;
       movementState = PlayerMovementState.jump;
+
+      // Cancel turn animations
+      presentFacing = facing;
     }
   }
 
@@ -450,15 +498,14 @@ class Player extends PositionComponent with HasWorldReference {
             90) %
         360.0;
 
-    debugPrint("pos: $position, dest: $localDest, degrees: $degrees");
     int frame = (degrees ~/ 36) + 1;
 
     if (frame > 5) {
       frame = 5 + (6 - frame);
-      facing = Facing.left;
+      presentFacing = facing = Facing.left;
       degrees = 360 - degrees;
     } else {
-      facing = Facing.right;
+      presentFacing = facing = Facing.right;
     }
 
     animTorso.setState("torso_aim",
@@ -482,12 +529,12 @@ class MyWorld extends World
   late TiledComponent mapComponent;
   CameraComponent? camera;
   bool move = false;
-  Vector2? dragStart;
+  Vector2? dragStart, runStart;
 
   @override
   Future<void> onLoad() async {
     FlameAudio.bgm.initialize();
-    FlameAudio.bgm.play("ambient.mp3");
+    FlameAudio.bgm.play("loop.mp3");
 
     mapComponent = await TiledComponent.load(
         "level_0.tmx", prefix: "assets/maps/", Vector2.all(24));
@@ -520,7 +567,7 @@ class MyWorld extends World
         add(SpriteComponent(
           sprite: await Sprite.load("fx.png"),
           children: [
-            bf.AnimationComponent.framebased("anims/fx.anim",
+            bf.AnimationComponent.framebased("fx.anim",
                 state: "spark", mode: bf.Mode.loop),
           ],
         )..position = object.position);
@@ -575,15 +622,19 @@ class MyWorld extends World
     super.onDragUpdate(event);
     if (event.handled || dragStart == null) return;
 
+    if (player.isRunning && runStart == null) {
+      runStart = dragStart!;
+    }
+
     Vector2 delta = dragStart! - event.deviceStartPosition;
-    debugPrint(delta.toString());
+    //debugPrint(delta.toString());
 
     move = false;
-    if (delta.length < 100) return;
+    if (delta.length < 10) return;
 
-    if (delta.x > 0) {
+    if (delta.x > (runStart?.x ?? 0)) {
       player.facing = Facing.left;
-    } else {
+    } else if (delta.x < (runStart?.x ?? 0)) {
       player.facing = Facing.right;
     }
 
@@ -594,7 +645,7 @@ class MyWorld extends World
       player.stand();
     }
 
-    if (delta.x.abs() < 150) return;
+    if (delta.x.abs() < 160) return;
 
     move = true;
   }
@@ -605,6 +656,7 @@ class MyWorld extends World
     if (event.handled) return;
 
     dragStart = null;
+    runStart = null;
     move = false;
   }
 }
