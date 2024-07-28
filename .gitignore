@@ -9,6 +9,7 @@
 .history
 .svn/
 .metadata
+.vscode/
 migrate_working_dir/
 
 # IntelliJ related
