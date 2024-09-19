@@ -17,15 +17,24 @@ part 'indexed_keyframe.dart';
 enum CaseSensitivity { insensitive, sensitive }
 
 /// Play [Mode] types can be combined. Default is [Mode.forward].
-enum Mode {
-  stop(0x00),
-  forward(0x01),
-  bounce(0x02),
-  repeat(0x03),
-  loop(0x04);
+extension type const Mode(int byte) {
+  static const Mode stop = Mode(0x00);
+  static const Mode forward = Mode(0x01);
+  static const Mode bounce = Mode(0x02);
+  static const Mode reverse = Mode(0x03);
+  static const Mode loop = Mode(0x04);
 
-  final int byte;
-  const Mode(this.byte);
+  Mode operator |(Mode rhs) {
+    return Mode(byte | rhs.byte);
+  }
+
+  Mode operator &(Mode rhs) {
+    return Mode(byte & rhs.byte);
+  }
+
+  Mode operator ^(Mode rhs) {
+    return Mode(byte ^ rhs.byte);
+  }
 }
 
 class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
@@ -204,6 +213,16 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   /// Fetch [currAnim] animation attributes or null if not state is set.
   List<Attribute>? get attrs => currAnim?.attrs;
 
+  /// Returns true if [currAnim] has finished the last frame of its state.
+  /// If [currKeyframe] is null, the result is always false.
+  ///
+  /// This convenience function is a shortcut to test the expression where both
+  /// [IndexedKeyframe.isLast] and [IndexedKeyframe.endedThisFrame] are true.
+  bool get completedThisFrame => switch (currKeyframe) {
+        final IndexedKeyframe k => k.isLast && k.endedThisFrame,
+        _ => false
+      };
+
   /// If [dt] is zero, this routine aborts.
   /// If there is a [currKeyframe] set, it will have its
   /// [IndexedKeyframe.newThisFrame] flag changed to false.
@@ -291,9 +310,9 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   /// with respect to the synchronized parent animation.
   void refresh({SpriteComponent? target}) {
     if (currKeyframe == null) return;
-    final Vector2 pos = currKeyframe!.data.computeRect.topLeft.toVector2();
-    final Vector2 size = currKeyframe!.data.computeRect.size();
-    final Vector2 origin = currKeyframe!.data.canonicalOrigin.toVector2();
+    final Vector2 pos = currKeyframe!.data.rect.pos.toVector2();
+    final Vector2 size = currKeyframe!.data.rect.size.toVector2();
+    final Vector2 origin = currKeyframe!.data.canonicalOrigin().toVector2();
     target ??= parent;
     target.sprite?.srcPosition = pos;
     target.sprite?.srcSize = size;
@@ -307,7 +326,7 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
       target.flipVertically();
     }
 
-    // Forces a resize event to update sprite
+    // Permits sprite to resize itself
     target.autoResize = true;
 
     if (_syncParent?.currKeyframe == null) return;
@@ -369,14 +388,18 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     if (currAnim == null) return;
 
     if (frame >= currAnim!.totalDuration) {
-      if ((mode.byte & Mode.loop.byte) == Mode.loop.byte) {
+      if ((mode & Mode.loop) == Mode.loop) {
         syncFrametime(Frametime.zero);
       } else {
         frame = currAnim!.totalDuration;
       }
     }
 
-    final List<Keyframe> kfs = currAnim!.keyframes;
+    final List<Keyframe> kfs = switch (mode & Mode.reverse) {
+      Mode.reverse => currAnim!.keyframes.reversed.toList(growable: false),
+      _ => currAnim!.keyframes,
+    };
+
     Keyframe next;
     int progress = frame.count;
     int idx = 0;

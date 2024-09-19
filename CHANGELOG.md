@@ -1,3 +1,15 @@
+## 1.0.1 
+
+- Bumps `boomsheets_dart` dependency to 1.0.4.
+- Added `AnimationComponent.completedThisFrame` feature.
+  -  https://github.com/TheMaverickProgrammer/boomflame/issues/5
+- Type `Mode` is now an extension type over `int` with bit-wise operator support.
+  - https://github.com/TheMaverickProgrammer/boomflame/issues/4
+- `Mode.repeat` changed to the correct `Mode.reverse` name.
+- All modes supported.
+- Updated readme with github supported markdown tips.
+- Added official branding folder with banners to project and readme.
+  
 ## 1.0.0
 
 - Initial version.

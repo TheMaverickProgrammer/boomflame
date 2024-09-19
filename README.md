@@ -1,11 +1,10 @@
 # Boomflame
-`Boomflame` provides extendable animations for Flame.
+Providing **extendable** animations for [Flame][FLAME] game engine.
+
+![boomflame_logo](./branding/banner_medium.png)
 
 - [Boomflame](#boomflame)
-  - [Dependencies](#dependencies)
   - [Getting Started](#getting-started)
-    - [What is Boomsheets?](#what-is-boomsheets)
-    - [Do I Need the Editor?](#do-i-need-the-editor)
     - [Playing Animations](#playing-animations)
     - [Changing Animations](#changing-animations)
     - [Complex Animations (Nodes)](#complex-animations-nodes)
@@ -18,30 +17,24 @@
     - [Frame Perfect Games](#frame-perfect-games)
   - [Terms](#terms)
 
-## Dependencies
-[Boomsheets for Dart](https://pub.dev/packages/boomsheets).
-[Flame](https://pub.dev/packages/flame).
-
 ## Getting Started
+ 
+Boomsheets is an animation document format intended to be easily
+read or written by anyone without technical knowledge or proprietary tooling.
 
-### What is Boomsheets?
-In short, Boomsheets is an animation document format over [YES][YES_URL] spec.
-`YES` spec defines a foundation of human-friendly tokens that can be read and
-written by people without technical knowledge or proprietary tooling. What this
-means, is that anyone can write an animation document with a plain text editor!
+> [!NOTE]
+> This means anyone can write an animation document with a plain text editor
+> or generate them from their own tools.
 
-There's more. The spec allows for extension beyond the format through
-meta-elements called `Attributes`. These elements begin with the `@` token.
-This means you and your content creators can add custom behavior to animations
-that suit your custom tools and your games.
+The underlining spec permits extension with meta-elements called `Attributes`.
+These elements begin with the `@` symbol amd can trigger user-defined events.
 
-To see how you can use this, read the [Attributes](#Attributes) tutorial below.
+> [!TIP]
+> This means you, your team, and content creators can add custom behavior to
+> animations that suit your custom tools and your games. 
+> See [Attributes](#Attributes) section below.
+
 To learn more about Boomsheets documents and format, visit the [repo][BMS_URL].
-
-### Do I Need the Editor?
-**NO!** The [editor][BMS_STM] is **not** necessary to write or use animation 
-documents that this library parses. The document is simple to write in notepad
-but the editor does save a lot of time.
 
 ### Playing Animations
 Getting started is easy. `AnimationComponent` expects a `SpriteComponent` 
@@ -86,27 +79,12 @@ By default, all animation documents are stored under `/assets/anims/` but can
 be changed directly by changing `AnimationComponent.prefix` and providing a 
 different asset manager in the constructor.
 `mode` tells the component how to play the animation and can be changed at
-any time. `Mode` enums can be combined using bitwise operators. 
+any time.
 
-```dart
-enum Mode {
-  stop(0x00),
-  forward(0x01),
-  reverse(0x02),
-  bounce(0x03),
-  loop(0x04);
-
-  final int byte;
-  const Mode(this.byte);
-}
-```
-
-For example:
-
-```dart
-// Play in reverse and loop
-playerAnim.mode = Mode.loop | Mode.reverse;
-```
+> [!TIP] 
+> `Mode` enums can be combined using bitwise operators. 
+> For example `Mode.reverse | Mode.loop` will loop the animation
+> while playing it in reverse.
 
 ### Changing Animations
 Changing animations is also simple.
@@ -117,13 +95,16 @@ if(isRunning) {
 }
 ```
 
-Note that the behavior of `refresh` is important here.
+Note the behavior of `refresh`.
 If set to true, it will recalculate `currKeyframe` data,
 apply itself to `player` sprite, and forces the `SpriteComponent` to
-update its bounds and orientation before drawing. By default this value
-is **false** out of caution. Your game logic may change state multiple
-times before the draw call. Set `refresh` to **true** if you expect this
-frame to be visible by the time it is displayed on screen in the next draw.
+update its bounds and orientation before drawing. 
+
+> [!WARNING]
+> By default `refresh` is **false** out of caution. 
+> Your game logic may change state multiple times before the draw call.
+> Only set `refresh` to **true** if you expect the next frame to be visible
+> by the time it is displayed on screen in the next draw.
 
 ```dart
   /// On success, sets the [currAnim] animation state.
@@ -169,14 +150,16 @@ playerAnim.syncPoint('hand', swordsAnim);
 It's really that simple. `swordsAnim` is now in a list of children
 of `playerAnim`. It will synchronize its time to the parent component's
 amd update the anchor as well, relative to its parent's latest origin.
-Note that every `AnimationComponent` can only have one parent at a time.
+
+> [!NOTE]
+> Every `AnimationComponent` can only have one parent at a time.
 
 ### Special Animation Events
 You may want to trigger functions when some frames are freshly
 displayed on screen for the first time, or has finished animating.
 
 For example, you may want to make an explosion play a sound on the first frame
-and delete itself from the game world when it completes. Read on.
+and delete itself from the game world when it completes.
 
 ```dart
 // class Explosion
@@ -241,13 +224,14 @@ if (stateIsRunning) {
 
 ### Attributes
 Your animation documents can contain meta-elements that have additional data.
-Per the [YES][YES_URL] spec, these elements must come _before_ the elements
-they affect and can be stacked in a row. This implies you can have multiple
-attributes and even multiples of the same kind.
+Per the [underlining][YES_URL] spec, these elements must come _before_ the 
+elements they affect and can be stacked in a row. 
 
-This is useful for many reasons. Especially if you have custom tools you wish 
-to integrate with or even programmable behavior that should happen when a frame
-is visible.
+This implies you can have many attributes and even multiples of the same name!
+
+> [!TIP]
+> This is useful for many reasons. Consider if your game has custom behavior
+> that should happen when a frame is first displayed on the screen.
 
 #### Animation State Attributes
 Consider a custom level editor for your game. You may want to expose all the
@@ -298,11 +282,15 @@ have an attribute with that name.
 
 #### Frame State Attributes
 
-Similary we can use attributes on keyframes. What's more, attributes can also
-have their own sets of keys and arguments. In the previous example, our
-attribute only had a name, and nothing else. This is fine for some cases.
-But in real-world applications, there comes a time when we need to store
-meaningful value in our attributes such as booleans, numbers, or strings.
+Attributes can also have their own sets of keys and arguments. 
+In the previous example, our attribute only had a name and nothing else.
+This is fine for simple use cases, but in larger projects, it is essential
+to provide meaningful values such as booleans, numbers, or strings.
+
+> [!INFO] 
+> Internally, all parsed values for keys are strings.
+> Use `getKeyValue`, `getKeyValueAsInt`, `getKeyValueAsDouble`, 
+> or `getKeyValueAsBool` to convert them to the proper type.
 
 Let's see how we can use attributes to create new behavior for our frames
 that we can inspect and act on in our game!
@@ -321,11 +309,13 @@ frame ...
 
 In this example, we have a charging hard punch animation that plays a sound
 when the animation begins and plays a chime when the charge is complete.
-We can read these attributes from our codebase to do what we want. And if
-we decide we should change the sound, volume, or even the frames they occur
-on, we can open the text file and change the properties there without fuss.
 
-Here's how this could be implemented in your own game:
+> [!TIP]
+> We can read these attributes from our codebase to do what we want. And if
+> we decide we should change the sound, volume, or even the frames they occur 
+> on, we can open the text file and change the properties there without fuss.
+
+Here's how adjustable volume could be implemented in your own game:
 
 ```dart
 // class BaseFighter
@@ -347,21 +337,23 @@ void update(double dt) {
 }
 ```
 
-The extension `allWithName` for `List<Attribute>` is provided to return every
-attribute with the same name. In our competitive fighter game example above,
+> [!INFO]
+> The extension `allWithName` for `List<Attribute>` is provided to return every
+> attribute with the same name. 
+
+In our competitive fighter game example above,
 we may have multiple sound effects playing on the same frame, so we support
 this by iterating over all attributes `play_sound` instead of just one.
 
 Attributes can have any number of arguments; called key-values or `KeyVal`s.
-Named keyvals can be written in any order but when we mix them with nameless
-keys, we need to be careful and ensure all necessary values are present. 
-In this example, notice that the first argument to `play_sound` attribute does
-not have a key. This is a "nameless" keyvalue. Like named keyvals, we can have
-any number of them, but we must fetch such keys by index and convert the value
-ourselves. Internally, all parsed values are of type `String`.
+Named `KeyVal`s can be written in any order, but when we mix them with nameless
+keys, we need to be careful and ensure all necessary values are present.
 
-Also notice that whitespaces must be enclosed in quotes, otherwise the parser
-will consider them as multiple tokens.
+> [!IMPORTANT]
+> In the previous example, notice that the first argument to `play_sound`
+> attribute does not have a key. This is a "nameless" keyvalue. 
+> Like named keyvals, we can have any number of them, but we must fetch
+> such keys by index and convert the value ourselves.
 
 ##### Going Further
 We can take this fighting game further by supporting attributes such as 
@@ -403,5 +395,5 @@ They are provided here to help.
 |Origin|The center of the sprite in a keyframe. This is synonymous with Flame component's `anchor` field.|
 
 [YES_URL]: https://github.com/TheMaverickProgrammer/dart_yes_parser/blob/master/spec/README.md
-[BMS_STM]: https://store.steampowered.com/app/2189000/Boomsheets/
 [BMS_URL]: https://github.com/TheMaverickProgrammer/boomsheets_dart
+[FLAME]: https://flame-engine.org/
