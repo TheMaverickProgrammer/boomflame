@@ -41,8 +41,10 @@ and the animation document to load and parse. This component will be a child
 of the parent `SpriteComponent` and modify its parent when keyframes change.
 
 ```dart
-// This import will be used for all following examples
-import 'package:boomflame/boomflame.dart' as bf;
+// NOTE: This import will be used for all following examples.
+// Consider importing with an alias if you are using many
+// AnimationComponent classes in your project.
+import 'package:boomflame/boomflame.dart';
 
 late SpriteComponent player;
 late AnimationComponent playerAnim;
@@ -50,7 +52,7 @@ late AnimationComponent playerAnim;
 add(player = SpriteComponent(
     sprite: await Sprite.load('player.png'),
     children: [
-        playerAnim = bf.AnimationComponent.framebased(
+        playerAnim = AnimationComponent.framebased(
             'player.anim',
             state: 'dancing',
         )
@@ -138,7 +140,7 @@ await player.add(sword = SpriteComponent(
     children: [
         // Our sword atlas has many sword variations.
         // We want only the matching rarity state.
-        swordsAnim = bf.AnimationComponent(
+        swordsAnim = AnimationComponent(
             'swords_atlas.anim',
             state: '$rarity_sword',
         )
@@ -212,7 +214,7 @@ call to `update(dt)`! This is trivial with `AnimationComponent`.
 
 ```dart
 if (stateIsRunning) {
-    playerAnim.mode = bf.Mode.loop;
+    playerAnim.mode = Mode.loop;
     final keyframeIndex = playerAnim.currKeyframe!.index;
     final newThisFrame = playerAnim.currKeyframe!.newThisFrame;
 
