@@ -21,20 +21,20 @@ Providing **extendable** animations for [Flame][FLAME] game engine.
  
 Boomsheets is an animation document format intended to be easily
 read or written by anyone without technical knowledge or proprietary tooling.
+Unlike other formats, it's intended to be open source and **extended**.
 
 > [!NOTE]
 > This means anyone can write an animation document with a plain text editor
 > or generate them from their own tools.
 
-The underlining spec permits extension with meta-elements called `Attributes`.
-These elements begin with the `@` symbol amd can trigger user-defined events.
+The underlining spec enables **extension** with the help of meta-elements
+called [`Attributes`](#Attributes). These elements begin with the `@` symbol
+and can be used to trigger custom behavior without corrupting the playback and 
+without making any code changes.
 
 > [!TIP]
-> This means you, your team, and content creators can add custom behavior to
-> animations that suit your custom tools and your games. 
-> See [Attributes](#Attributes) section below.
-
-To learn more about Boomsheets documents and format, visit the [repo][BMS_URL].
+> To learn more about Boomsheets documents and format, 
+> visit the [repo][BMS_URL].
 
 ### Playing Animations
 Getting started is easy. `AnimationComponent` expects a `SpriteComponent` 
@@ -104,7 +104,11 @@ update its bounds and orientation before drawing.
 > By default `refresh` is **false** out of caution. 
 > Your game logic may change state multiple times before the draw call.
 > Only set `refresh` to **true** if you expect the next frame to be visible
-> by the time it is displayed on screen in the next draw.
+> by the time it is displayed on screen in the next draw. 
+
+> [!TIP]
+> If you need further control when to recalculate the frame,
+> an explicit call to `refresh()` can be invoked.
 
 ```dart
   /// On success, sets the [currAnim] animation state.
@@ -287,7 +291,7 @@ In the previous example, our attribute only had a name and nothing else.
 This is fine for simple use cases, but in larger projects, it is essential
 to provide meaningful values such as booleans, numbers, or strings.
 
-> [!INFO] 
+> [!NOTE] 
 > Internally, all parsed values for keys are strings.
 > Use `getKeyValue`, `getKeyValueAsInt`, `getKeyValueAsDouble`, 
 > or `getKeyValueAsBool` to convert them to the proper type.
@@ -311,7 +315,7 @@ In this example, we have a charging hard punch animation that plays a sound
 when the animation begins and plays a chime when the charge is complete.
 
 > [!TIP]
-> We can read these attributes from our codebase to do what we want. And if
+> We can read these attributes in our code to do what we want. And if
 > we decide we should change the sound, volume, or even the frames they occur 
 > on, we can open the text file and change the properties there without fuss.
 
@@ -337,7 +341,7 @@ void update(double dt) {
 }
 ```
 
-> [!INFO]
+> [!NOTE]
 > The extension `allWithName` for `List<Attribute>` is provided to return every
 > attribute with the same name. 
 

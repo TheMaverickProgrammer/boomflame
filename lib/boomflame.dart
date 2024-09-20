@@ -18,23 +18,33 @@ enum CaseSensitivity { insensitive, sensitive }
 
 /// Play [Mode] types can be combined. Default is [Mode.forward].
 extension type const Mode(int byte) {
+  /// No animation plays.
   static const Mode stop = Mode(0x00);
+
+  /// Animation plays forward from the first frame to the end (default).
   static const Mode forward = Mode(0x01);
+
+  /// Animation plays forward, then backward, if [Mode.loop] is present.
   static const Mode bounce = Mode(0x02);
+
+  /// Animation plays from the end to the first frame.
   static const Mode reverse = Mode(0x03);
+
+  /// Animation will start over and repeat seemlessly.
   static const Mode loop = Mode(0x04);
 
-  Mode operator |(Mode rhs) {
-    return Mode(byte | rhs.byte);
+  /// Bitwise add combines [mode].
+  Mode operator |(Mode mode) {
+    return Mode(byte | mode.byte);
   }
 
-  Mode operator &(Mode rhs) {
-    return Mode(byte & rhs.byte);
+  /// Bitwise subtract removes [mode].
+  Mode operator &(Mode mode) {
+    return Mode(byte & mode.byte);
   }
 
-  Mode operator ^(Mode rhs) {
-    return Mode(byte ^ rhs.byte);
-  }
+  /// Masks [mode]'s bits to determine if this is combined with [mode].
+  bool has(Mode mode) => (this & mode) == mode;
 }
 
 class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
@@ -387,16 +397,22 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   void _calcFrame() {
     if (currAnim == null) return;
 
-    if (frame >= currAnim!.totalDuration) {
-      if ((mode & Mode.loop) == Mode.loop) {
+    final Frametime total = currAnim!.totalDuration;
+    if (frame >= total) {
+      if (mode.has(Mode.loop)) {
         syncFrametime(Frametime.zero);
       } else {
         frame = currAnim!.totalDuration;
       }
     }
 
-    final List<Keyframe> kfs = switch (mode & Mode.reverse) {
-      Mode.reverse => currAnim!.keyframes.reversed.toList(growable: false),
+    final bool bounce = mode.has(Mode.bounce) &&
+        (frame.count % (2 * total.count) > total.count);
+
+    final bool reverseList = mode.has(Mode.reverse) ? !bounce : bounce;
+
+    final List<Keyframe> kfs = switch (reverseList) {
+      true => currAnim!.keyframes.reversed.toList(growable: false),
       _ => currAnim!.keyframes,
     };
 

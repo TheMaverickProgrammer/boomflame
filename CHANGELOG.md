@@ -6,7 +6,8 @@
 - Type `Mode` is now an extension type over `int` with bit-wise operator support.
   - https://github.com/TheMaverickProgrammer/boomflame/issues/4
 - `Mode.repeat` changed to the correct `Mode.reverse` name.
-- All modes supported.
+- All `Mode` flags supported.
+- Added `Mode.has(...)` to shorthand the existence of other mode flags.
 - Updated readme with github supported markdown tips.
 - Added official branding folder with banners to project and readme.
   
