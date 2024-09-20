@@ -13,7 +13,6 @@ Providing **extendable** animations for [Flame][FLAME] game engine.
     - [Attributes](#attributes)
       - [Animation State Attributes](#animation-state-attributes)
       - [Frame State Attributes](#frame-state-attributes)
-        - [Going Further](#going-further)
     - [Frame Perfect Games](#frame-perfect-games)
   - [Terms](#terms)
 
@@ -78,11 +77,11 @@ AnimationComponent(
 By default, all animation documents are stored under `/assets/anims/` but can
 be changed directly by changing `AnimationComponent.prefix` and providing a 
 different asset manager in the constructor.
-`mode` tells the component how to play the animation and can be changed at
+A `mode` tells the component how to play the animation and can be changed at
 any time.
 
 > [!TIP] 
-> `Mode` enums can be combined using bitwise operators. 
+> `Mode`s can be combined using bitwise operators. 
 > For example `Mode.reverse | Mode.loop` will loop the animation
 > while playing it in reverse.
 
@@ -106,10 +105,6 @@ update its bounds and orientation before drawing.
 > Only set `refresh` to **true** if you expect the next frame to be visible
 > by the time it is displayed on screen in the next draw. 
 
-> [!TIP]
-> If you need further control when to recalculate the frame,
-> an explicit call to `refresh()` can be invoked.
-
 ```dart
   /// On success, sets the [currAnim] animation state.
   /// Optionally set [frame] to jump to a keyframe in that state.
@@ -118,6 +113,10 @@ update its bounds and orientation before drawing.
   void setState(String state, {int? frame, Mode? mode, bool refresh = false});
 ```
 
+> [!TIP]
+> If you need further control when to recalculate the frame,
+> an explicit call to `refresh()` can be invoked.
+ 
 ### Complex Animations (Nodes)
 Some sprites are split into multiple pieces to reduce texture complexity.
 Some sprites are complicated and have multiple moving parts.
@@ -359,10 +358,14 @@ keys, we need to be careful and ensure all necessary values are present.
 > Like named keyvals, we can have any number of them, but we must fetch
 > such keys by index and convert the value ourselves.
 
-##### Going Further
-We can take this fighting game further by supporting attributes such as 
-`@hitbox name, x, y, w, h` which we can stack on one keyframe in order
-to represent all of the hit zones possible. Very powerful!
+All of this utility comes at no cost. Regardless of what meta-data may be
+present in your animations, **they will always animate the same way**.
+
+> [!TIP] 
+> We can take this fighting game example further by supporting attributes 
+> such as hitbox information. Consider an attribute like the following:
+> `@hitbox name, x, y, w, h` which we can stack on one keyframe in order
+> to represent all of the hit zones possible. Very powerful!
 
 ### Frame Perfect Games
 While the underlining specification of the Boomsheets document uses frames,
