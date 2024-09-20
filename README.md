@@ -42,8 +42,8 @@ of the parent `SpriteComponent` and modify its parent when keyframes change.
 
 ```dart
 // NOTE: This import will be used for all following examples.
-// Consider importing with an alias if you are using many
-// AnimationComponent classes in your project.
+// Consider importing with an alias if you are using many different
+// AnimationComponent class names in your project to avoid conflicts.
 import 'package:boomflame/boomflame.dart';
 
 late SpriteComponent player;
