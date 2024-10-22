@@ -1,3 +1,7 @@
+## 1.0.2
+
+- Bumps `boomsheets_dart` dependency to 1.0.5.
+
 ## 1.0.1 
 
 - Bumps `boomsheets_dart` dependency to 1.0.4.
