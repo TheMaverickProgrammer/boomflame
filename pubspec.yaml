@@ -12,7 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   flame: ^1.17.0
-  boomsheets: ^1.0.4
+  boomsheets: ^1.0.5
 
 dev_dependencies:
   flutter_lints: ^3.0.0
