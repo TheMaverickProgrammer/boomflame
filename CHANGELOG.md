@@ -1,3 +1,8 @@
+## 1.0.3
+
+- Bumps `boomsheets_dart` dependency to 1.0.6.
+- Improved readme terms in the glossary table.
+
 ## 1.0.2
 
 - Bumps `boomsheets_dart` dependency to 1.0.5.

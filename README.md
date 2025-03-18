@@ -1,5 +1,5 @@
 # Boomflame
-Providing **extendable** animations for [Flame][FLAME] game engine.
+Providing **extensible** animations for [Flame][FLAME] game engine.
 
 ![boomflame_logo](./branding/banner_medium.png)
 
@@ -20,7 +20,8 @@ Providing **extendable** animations for [Flame][FLAME] game engine.
  
 Boomsheets is an animation document format intended to be easily
 read or written by anyone without technical knowledge or proprietary tooling.
-Unlike other formats, it's intended to be open source and **extended**.
+Unlike other document formats, its featureset is intended to be open source 
+and **extended** by the users.
 
 > [!NOTE]
 > This means anyone can write an animation document with a plain text editor
@@ -395,7 +396,7 @@ They are provided here to help.
 |:-:|:-|
 |Document|A file or string buffer representing a collection of animation states and their keyframe data. Usually ends with `.anim` suffix.|
 |Anim|A class in Dart representing a collection of keyframe data and attributes.|
-|State|A named collection of keyframes in the animation document. Sometimes it is more convenient to describe the currently playing animation as a "state" to distinguish from animation "files". In the library, `Anim` class **is** the state plus other properties such as `totalDuration` which is used during playback.|
+|State|A _named_ collection of keyframes in the animation document. It is more natural to refer to the active animation as the current "state". In this library, the `Anim` class tracks the active state and exposes state properties such as `totalDuration` used during playback.|
 |Keyframe|A specific frame entry that begins a new subregion from the source texture atlas over a duration of time.
 |frame|A measurement of time. A frame advances by one every `tick()`. This term is not related to `Keyframe` which represents subregion data in an animation state.|
 |tick|A singular update in Flame with the absence of delta time. Delta time or `dt` for short is useful for simulations, physics-based algorithms, and network games to blend animations together to hide jitter or lag. Delta time causes trouble for frame-sensitive applications such as deterministic online fighter games, retro games, and network games. Yes, delta time can be used to _blend_ network game visuals to smooth latency, but network game _state_ should rely on integer frames in order to gaurantee synchronization!|
