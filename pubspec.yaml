@@ -2,17 +2,18 @@ name: boomflame
 description: 
   Boomflame brings simple and extensible animations to Flame!
   Bring your animations to life right away!
-version: 1.0.3
+version: 1.0.4
 homepage: https://github.com/TheMaverickProgrammer/boomflame
 
 environment:
-  sdk: '^3.3.4'
+  sdk: ">=3.8.0 <4.0.0"
+  flutter: ">=3.32.0"
 
 dependencies:
-  flutter:
-    sdk: flutter
-  flame: ^1.17.0
-  boomsheets: ^1.0.6
+  meta: ^1.12.0
+  vector_math: ^2.1.4
+  flame: ^1.32.0
+  boomsheets: ^1.0.7
 
 dev_dependencies:
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0

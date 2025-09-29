@@ -1,3 +1,9 @@
+## 1.0.4
+
+- Bumps `boomsheets_dart` dependency to 1.0.7.
+- Includes new API `AnimationComponent.pointOffset(String name, {...})` for fetching arbitrary points to attach Components in Flame.
+- New parser feature supports multi-line values for long elements and custom user-data.
+
 ## 1.0.3
 
 - Bumps `boomsheets_dart` dependency to 1.0.6.

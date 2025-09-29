@@ -8,6 +8,7 @@ Providing **extensible** animations for [Flame][FLAME] game engine.
     - [Playing Animations](#playing-animations)
     - [Changing Animations](#changing-animations)
     - [Complex Animations (Nodes)](#complex-animations-nodes)
+    - [Further use cases for `point`](#further-use-cases-for-point)
     - [Special Animation Events](#special-animation-events)
       - [On Specific Frames](#on-specific-frames)
     - [Attributes](#attributes)
@@ -159,6 +160,23 @@ amd update the anchor as well, relative to its parent's latest origin.
 
 > [!NOTE]
 > Every `AnimationComponent` can only have one parent at a time.
+
+### Further use cases for `point`
+Whenever your `hero` character is submerged underwater, showing bubbles
+from your hero's head every once in a while will increase player immersion.
+You may also use this as a in-game indicator of your hero's health.
+Such special effects are easy to achieve. Consider the following code.
+
+```dart
+final Vector2 offset = animationComponent?.pointOffset('mouth') ?? Vector2.zero();
+
+await world.add(
+  Bubble.withVariance(
+    from: velocity,
+    force: -hero.velocity,
+  )..position = hero.position + offset,
+);
+```
 
 ### Special Animation Events
 You may want to trigger functions when some frames are freshly

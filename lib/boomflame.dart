@@ -1,4 +1,4 @@
-library boomflame;
+library;
 
 import 'dart:math';
 import 'package:boomsheets/boomsheets.dart';
@@ -105,9 +105,9 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     AssetsCache? cache,
     this.stateNameSensitivity = CaseSensitivity.insensitive,
     this.mode = Mode.forward,
-  })  : framebased = false,
-        _cache = cache,
-        _defaultState = state;
+  }) : framebased = false,
+       _cache = cache,
+       _defaultState = state;
 
   /// This named constructor is best for applications which need frame-perfect
   /// animation behavior. For example deterministic fighting games.
@@ -125,9 +125,9 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     AssetsCache? cache,
     this.stateNameSensitivity = CaseSensitivity.insensitive,
     this.mode = Mode.forward,
-  })  : framebased = true,
-        _cache = cache,
-        _defaultState = state;
+  }) : framebased = true,
+       _cache = cache,
+       _defaultState = state;
 
   /// This routine concatonates [prefix] with [src] before calling [_load].
   /// To actually load, [AssetsCache.readFile] is used to retrieve the
@@ -157,6 +157,40 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   /// If [doc] is null, returns an empty list.
   List<String> get stateNames {
     return doc?.states.keys.toList() ?? const [];
+  }
+
+  /// Given a point [name], returns the offset from the [currKeyframe]'s
+  /// origin to the matched point as identified in the animation document.
+  /// This offset can be used attach [Component]s to a [SpriteComponent]
+  /// for complex animations or special effects.
+  ///
+  /// If [parent.isFlippedHorizontally] is true, then the final value
+  /// will have [Vector2.x] mulitplied by -1.
+  ///
+  /// Likewise if [parent.isFlippedVertically] is true, then the final value
+  /// will have [Vector2.y] mulitplied by -1.
+  ///
+  /// Note that if [considerFlip] is true, then this offset will be calculated
+  /// with respect to [Keyframe.flipX] and [Keyframe.flipY] values.
+  Vector2? pointOffset(String name, {bool considerFlip = false}) {
+    final Vector2? offset = currKeyframe?.data
+        .pointOffset(point: name, considerFlip: considerFlip)
+        ?.toVector2();
+
+    if (offset == null) return null;
+
+    return Vector2(
+      switch (parent.isFlippedHorizontally) {
+            true => -1,
+            false => 1,
+          } *
+          offset.x,
+      switch (parent.isFlippedVertically) {
+            true => -1,
+            false => 1,
+          } *
+          offset.y,
+    );
   }
 
   /// This routine will add [anim] as a child animation at a point [label].
@@ -204,15 +238,17 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     // Jump to target keyframe or first keyframe.
     currKeyframe = switch (frame) {
       null => IndexedKeyframe.from(
-          data: currAnim!.keyframes.first,
-          index: 1,
-          isLast: currAnim!.keyframes.length == 1,
-          newThisFrame: true),
+        data: currAnim!.keyframes.first,
+        index: 1,
+        isLast: currAnim!.keyframes.length == 1,
+        newThisFrame: true,
+      ),
       int f => IndexedKeyframe.from(
-          data: currAnim!.keyframes.elementAtOrNull(f - 1),
-          index: f,
-          isLast: currAnim!.keyframes.length == f,
-          newThisFrame: true),
+        data: currAnim!.keyframes.elementAtOrNull(f - 1),
+        index: f,
+        isLast: currAnim!.keyframes.length == f,
+        newThisFrame: true,
+      ),
     };
 
     if (refresh) {
@@ -229,9 +265,9 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   /// This convenience function is a shortcut to test the expression where both
   /// [IndexedKeyframe.isLast] and [IndexedKeyframe.endedThisFrame] are true.
   bool get completedThisFrame => switch (currKeyframe) {
-        final IndexedKeyframe k => k.isLast && k.endedThisFrame,
-        _ => false
-      };
+    final IndexedKeyframe k => k.isLast && k.endedThisFrame,
+    _ => false,
+  };
 
   /// If [dt] is zero, this routine aborts.
   /// If there is a [currKeyframe] set, it will have its
@@ -341,7 +377,9 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
 
     if (_syncParent?.currKeyframe == null) return;
     _reanchor(
-        _syncParent!.currKeyframe!.data, _syncParent!._syncChildren[this]!);
+      _syncParent!.currKeyframe!.data,
+      _syncParent!._syncChildren[this]!,
+    );
   }
 
   /// Sets [elapsedTime] and sets the equivalent [Frametime] value for [frame].
@@ -370,8 +408,9 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     doc = DocumentReader.fromString(await cache.readFile(src));
 
     if (doc != null && isStateNameInsensitive) {
-      _stateNameHash =
-          doc!.states.map((key, val) => MapEntry(key.toLowerCase(), key));
+      _stateNameHash = doc!.states.map(
+        (key, val) => MapEntry(key.toLowerCase(), key),
+      );
     }
 
     if (_defaultState != null) {
@@ -406,7 +445,8 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
       }
     }
 
-    final bool bounce = mode.has(Mode.bounce) &&
+    final bool bounce =
+        mode.has(Mode.bounce) &&
         (frame.count % (2 * total.count) > total.count);
 
     final bool reverseList = mode.has(Mode.reverse) ? !bounce : bounce;
@@ -427,10 +467,10 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
     } while (progress > 0);
 
     currKeyframe = IndexedKeyframe.from(
-        data: next,
-        index: idx,
-        isLast: currAnim!.keyframes.length == idx,
-        newThisFrame: currKeyframe?.index != idx)
-      ?.._endedThisFrame = progress == 0;
+      data: next,
+      index: idx,
+      isLast: currAnim!.keyframes.length == idx,
+      newThisFrame: currKeyframe?.index != idx,
+    )?.._endedThisFrame = progress == 0;
   }
 }
