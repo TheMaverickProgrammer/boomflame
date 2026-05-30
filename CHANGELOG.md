@@ -1,3 +1,9 @@
+## 1.0.8
+- `AnimationComponent.xtends` is a static public list to support doc parser extensions for all components.
+
+## 1.0.7
+- Bumps `boomsheets_dart` dependency to 1.0.10 which fixed a bad version update.
+
 ## 1.0.6
 - Bumps `boomsheets_dart` dependency to 1.0.9 which introduces macro expansion syntax.
 

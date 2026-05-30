@@ -48,6 +48,9 @@ extension type const Mode(int byte) {
 }
 
 class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
+  /// Supported animation extensions to use for all components.
+  static List<Extensions> xtends = [];
+
   /// [onLoad] looks for anim documents under [prefix] directory.
   /// Change the value if you want to load from a different directory.
   /// By default the primary directory is under "anims/".
@@ -403,7 +406,7 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   String _srcPath(String? prefix, String src) =>
       "${prefix ?? AnimationComponent.prefix}$src";
 
-  Future<void> _load(String src, {List<Extensions> xtends = const []}) async {
+  Future<void> _load(String src) async {
     final AssetsCache cache = _cache ?? Flame.assets;
     doc = DocumentReader.fromString(await cache.readFile(src), xtends: xtends);
 
