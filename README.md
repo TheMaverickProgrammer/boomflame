@@ -1,4 +1,6 @@
 # Boomflame
+[![VS Code Download](https://img.shields.io/badge/VS%20Code%20Extension-Download-blue)](https://marketplace.visualstudio.com/items?itemName=ProtoComplete.boomsheets)
+
 Providing **extensible** animations for [Flame][FLAME] game engine.
 
 ![boomflame_logo](./branding/banner_medium.png)
