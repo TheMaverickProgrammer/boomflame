@@ -1,5 +1,7 @@
-## 1.0.5
+## 1.0.6
+- Bumps `boomsheets_dart` dependency to 1.0.9 which introduces macro expansion syntax.
 
+## 1.0.5
 - Bumps `boomsheets_dart` dependency to 1.0.8 which resolves issues with parsing tabs and line feed end characters on different platforms.
 
 ## 1.0.4

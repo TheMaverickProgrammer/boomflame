@@ -403,9 +403,9 @@ class AnimationComponent extends Component with ParentIsA<SpriteComponent> {
   String _srcPath(String? prefix, String src) =>
       "${prefix ?? AnimationComponent.prefix}$src";
 
-  Future<void> _load(String src) async {
+  Future<void> _load(String src, {List<Extensions> xtends = const []}) async {
     final AssetsCache cache = _cache ?? Flame.assets;
-    doc = DocumentReader.fromString(await cache.readFile(src));
+    doc = DocumentReader.fromString(await cache.readFile(src), xtends: xtends);
 
     if (doc != null && isStateNameInsensitive) {
       _stateNameHash = doc!.states.map(
